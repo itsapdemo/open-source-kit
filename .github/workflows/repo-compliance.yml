@@ -22,6 +22,7 @@ permissions:
   actions: read
   checks: write
   pull-requests: read
+  statuses: write
 
 jobs:
   # --- License via GitHub API (whitelist MIT/BSD) + WB IGO Rider for MIT ---
@@ -246,7 +247,7 @@ jobs:
         uses: github/super-linter/slim@v6
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-          GITHUB_STATUS_REPORTER: false
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Essential linters only
           VALIDATE_YAML: true
           VALIDATE_JSON: true

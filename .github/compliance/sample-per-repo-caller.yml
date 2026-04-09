@@ -10,6 +10,7 @@ permissions:
   actions: read
   checks: write
   pull-requests: read
+  statuses: write
 jobs:
   run:
     uses: itsapdemo/open-source-kit/.github/workflows/repo-compliance.yml@main
