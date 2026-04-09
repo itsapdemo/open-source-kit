@@ -1,54 +1,69 @@
-This kit features the following checks:
+# Open Source Compliance Kit
 
-- License (GitHub API, whitelist: MIT|BSD-2-Clause|BSD-3-Clause)
-- README presence + content checks
-- Secrets (gitleaks; optional deep history via trufflehog)
-- Issue/PR text scanning (basic secrets/internal refs)
-- Dependencies: osv-scanner, pip-audit, npm audit
-- SAST & Code quality: SonarCloud
-- Linting: Prefer local linters (eslint/ruff/flake8…) → fallback to Super-Linter
-- Tech stack (GitHub Languages API + manifest sniffers)
-- Data file policy warnings
-- AI usage detection (heuristic, informational)
+Reusable GitHub Actions workflow for open source compliance checks.
 
-Org prerequisites (once)
+## Checks
 
-1. Create/confirm a SonarCloud organization linked to your GitHub org.
+- **License** - Whitelist: MIT, Apache-2.0. Requires WB IGO Rider for each.
+- **README** - Presence and content checks
+- **Secrets** - TruffleHog scan (working tree + optional history)
+- **Data Files** - Warns on large data files; suggests data catalog
+- **Dependencies** - Dependabot API for vulnerability alerts
+- **Code Quality (Basic)** - Local linters (eslint/ruff/flake8) or Super-Linter fallback
+- **Code Quality (Sonar)** - SonarCloud analysis
+- **Tech Stack** - GitHub Languages API + framework detection (informational)
+- **AI Usage** - Detects AI library usage (informational)
 
-2. In GitHub Org Secrets, add:
+On the default branch, a **compliance issue** is automatically created/updated with a checklist of results. The issue closes when all checks pass.
 
-- SONAR_TOKEN (SonarCloud user token with “Execute Analysis”)
-- SONAR_ORGANIZATION (your SonarCloud org key, e.g. my-org)
+## Org Prerequisites
 
-3. To use the fan-out and make-public workflows, add:
+1. Enable **Dependabot alerts** org-wide: Settings > Code security > Dependabot alerts
 
-- ORG_ADMIN_TOKEN (org-scoped PAT with repo, workflow; for make-public also needs repo admin on target repos).
+2. Create/confirm a **SonarCloud** organization linked to your GitHub org
 
-Repos don’t need a sonar-project.properties. If a repo has one, the scan will use it; otherwise we pass minimal config.
+3. In **GitHub Org Secrets**, add:
+   - `SONAR_TOKEN` - SonarCloud user token with "Execute Analysis"
+   - `SONAR_ORG_KEY` - Your SonarCloud org key
+   - `DEPENDABOT_TOKEN` *(optional)* - PAT with `security_events` scope for Dependabot API access on private repos
 
-## How teams adopt
+## How Teams Adopt
 
-1. In each repo, add a caller workflow:
-   ```yaml
-   # .github/workflows/compliance.yml
-   name: Compliance
-   on: [push, pull_request]
-   schedule: [{ cron: "17 2 * * *" }]
-   workflow_dispatch:
-     inputs:
-       history_depth:
-         description: "Commits to scan for secrets (0 = off)"
-         default: "0"
-   permissions:
-     contents: read
-     security-events: write
-   jobs:
-     run:
-       uses: your-org/compliance-kit/.github/workflows/repo-compliance.yml@main
-       with:
-         history_depth: ${{ github.event.inputs.history_depth || 0 }}
-       secrets: inherit
+Add a caller workflow to each repo:
 
-2. Use Make Repository Public (Gated) instead of manually toggling visibility.
+```yaml
+# .github/workflows/compliance.yml
+name: Open Source Compliance
+on:
+  push:
+  pull_request:
+  schedule: [{ cron: '17 2 * * *' }]
+  workflow_dispatch:
+    inputs:
+      history_depth:
+        description: 'Commits to scan for secrets (0 = off)'
+        type: number
+        default: 0
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  checks: write
+  pull-requests: read
+  statuses: write
+  issues: write
+jobs:
+  run:
+    uses: itsapdemo/open-source-kit/.github/workflows/repo-compliance.yml@main
+    with:
+      history_depth: ${{ inputs.history_depth || 0 }}
+    secrets: inherit
+```
 
-3. Run Org fan-out from this repo to sweep all repos.
+## WB IGO Riders
+
+Repos using MIT license must include [WB-IGO-RIDER.md](https://github.com/worldbank/.github/blob/main/WB-IGO-RIDER.md).
+
+Repos using Apache-2.0 license must include [WB-IGO-RIDER-APACHE.md](https://github.com/worldbank/.github/blob/main/WB-IGO-RIDER-APACHE.md).
+
+The compliance workflow validates that the rider content matches the canonical version.

@@ -4,6 +4,11 @@ on:
   pull_request:
   schedule: [{ cron: '17 2 * * *' }]
   workflow_dispatch:
+    inputs:
+      history_depth:
+        description: 'Commits to scan for secrets (0 = off)'
+        type: number
+        default: 0
 permissions:
   contents: read
   security-events: write
@@ -15,4 +20,6 @@ permissions:
 jobs:
   run:
     uses: itsapdemo/open-source-kit/.github/workflows/repo-compliance.yml@main
+    with:
+      history_depth: ${{ inputs.history_depth || 0 }}
     secrets: inherit
