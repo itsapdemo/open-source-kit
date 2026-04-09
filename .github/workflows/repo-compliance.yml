@@ -352,10 +352,14 @@ jobs:
               owner, repo, run_id: runId
             });
 
-            const jobUrlMap = {};
-            for (const job of workflowJobs.jobs) {
-              jobUrlMap[job.name] = job.html_url;
-            }
+            // For reusable workflows, job names are prefixed (e.g., "run / license")
+            // Match by checking if job name ends with the target name
+            const findJobUrl = (targetName) => {
+              const job = workflowJobs.jobs.find(j =>
+                j.name === targetName || j.name.endsWith(` / ${targetName}`)
+              );
+              return job?.html_url || `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
+            };
 
             // Map display names to job names in workflow
             const jobNameMap = {
@@ -385,7 +389,7 @@ jobs:
             for (const [name, result] of Object.entries(jobs)) {
               const icon = statusIcon(result);
               const jobName = jobNameMap[name];
-              const jobUrl = jobUrlMap[jobName] || `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
+              const jobUrl = findJobUrl(jobName);
 
               if (result === 'failure' || result === 'skipped') {
                 hasFailures = true;
