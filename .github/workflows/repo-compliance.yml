@@ -455,7 +455,7 @@ jobs:
             ${infoContent.join('\n')}
 
             ---
-            *This issue is automatically managed by the compliance workflow. It will be closed when all checks pass.*
+            *This issue is auto-managed by the [open source compliance workflow](https://github.com/${owner}/${repo}/actions/workflows/compliance.yml). Click on each item to review details. Push to the default branch to re-run checks and update the checklist. Issue closes when all checks pass.*
             `.replace(/^            /gm, '');
 
             // Search for existing issue
