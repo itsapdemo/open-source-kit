@@ -18,6 +18,7 @@ permissions:
   actions: read
   checks: write
   pull-requests: read
+  vulnerability-alerts: read
 
 jobs:
   # --- License via GitHub API (whitelist MIT/BSD ) ---
@@ -48,19 +49,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: itsapdemo/open-source-kit
+          path: .compliance
+          sparse-checkout: .github/compliance
       - run: npm i -g markdownlint-cli
       - name: Lint README
         run: |
           test -f README.md || { echo "::error::Missing README.md"; exit 1; }
           markdownlint README.md || true
       - name: Content checks
-        run: python3 .github/compliance/check_readme.py
+        run: python3 .compliance/.github/compliance/check_readme.py
 
   # --- Languages via GitHub API + framework detection script ---
   tech-stack:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: itsapdemo/open-source-kit
+          path: .compliance
+          sparse-checkout: .github/compliance
       - name: GitHub Languages API
         id: langs
         uses: actions/github-script@v7
@@ -71,7 +82,7 @@ jobs:
       - name: Print languages
         run: echo '${{ steps.langs.outputs.languages }}'
       - name: Framework/manifest detection
-        run: python3 .github/compliance/detect_stack.py
+        run: python3 .compliance/.github/compliance/detect_stack.py
 
   # --- Secrets: working tree + optional history ---
   secrets:
@@ -86,6 +97,7 @@ jobs:
       - name: Upload SARIF (secrets)
         uses: github/codeql-action/upload-sarif@v3
         with: { sarif_file: gitleaks.sarif }
+        continue-on-error: true  # May fail on private repos without GHAS
       - name: Optional history scan (TruffleHog)
         if: ${{ inputs.history_depth > 0 }}
         run: |
@@ -97,14 +109,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 .github/compliance/check_data_files.py
+      - uses: actions/checkout@v4
+        with:
+          repository: itsapdemo/open-source-kit
+          path: .compliance
+          sparse-checkout: .github/compliance
+      - name: Check data files
+        run: python3 .compliance/.github/compliance/check_data_files.py
 
   # --- AI usage hints (informational) ---
   ai-usage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 .github/compliance/detect_ai_use.py
+      - uses: actions/checkout@v4
+        with:
+          repository: itsapdemo/open-source-kit
+          path: .compliance
+          sparse-checkout: .github/compliance
+      - name: Detect AI usage
+        run: python3 .compliance/.github/compliance/detect_ai_use.py
 
   # --- Dependency security via Dependabot API (free) ---
   # Requires Dependabot to be enabled org-wide
@@ -158,8 +182,8 @@ jobs:
                 core.info('✅ No open Dependabot alerts');
               }
             } catch (e) {
-              if (e.status === 404) {
-                core.warning('Dependabot alerts not enabled. Enable at: Settings > Code security > Dependabot alerts');
+              if (e.status === 404 || e.status === 403) {
+                core.warning('Dependabot alerts not accessible. Enable at: Settings > Code security > Dependabot alerts');
               } else {
                 throw e;
               }
@@ -222,4 +246,3 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
