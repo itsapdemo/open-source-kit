@@ -118,7 +118,7 @@ jobs:
       - name: TruffleHog scan
         uses: trufflesecurity/trufflehog@main
         with:
-          extra_args: --no-update --only-verified
+          extra_args: --only-verified
         continue-on-error: true
       - name: TruffleHog deep history scan
         if: ${{ inputs.history_depth > 0 }}
