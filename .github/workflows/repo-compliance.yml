@@ -24,8 +24,7 @@ permissions:
   pull-requests: read
 
 jobs:
-  # --- License via GitHub API (whitelist MIT/BSD ) ---
-  # TODO: handle rider: when is it required?
+  # --- License via GitHub API (whitelist MIT/BSD) + WB IGO Rider for MIT ---
   license:
     runs-on: ubuntu-latest
     steps:
@@ -46,6 +45,29 @@ jobs:
             "") echo "::error::License missing or undetected"; exit 1 ;;
             *) echo "::error::Non-whitelisted license: $SPDX"; exit 1 ;;
           esac
+      - name: Check WB IGO Rider (required for MIT)
+        if: steps.gh-license.outputs.spdx == 'MIT'
+        run: |
+          RIDER_FILE="WB-IGO-RIDER.md"
+          CANONICAL_URL="https://raw.githubusercontent.com/worldbank/.github/main/WB-IGO-RIDER.md"
+
+          if [ ! -f "$RIDER_FILE" ]; then
+            echo "::error::MIT license requires WB-IGO-RIDER.md file. See: https://github.com/worldbank/.github/blob/main/WB-IGO-RIDER.md"
+            exit 1
+          fi
+
+          echo "Checking rider content matches canonical version..."
+          curl -sSfL "$CANONICAL_URL" -o /tmp/canonical-rider.md
+
+          if ! diff -q "$RIDER_FILE" /tmp/canonical-rider.md >/dev/null 2>&1; then
+            echo "::error::WB-IGO-RIDER.md content does not match canonical version at $CANONICAL_URL"
+            echo "::group::Diff"
+            diff "$RIDER_FILE" /tmp/canonical-rider.md || true
+            echo "::endgroup::"
+            exit 1
+          fi
+
+          echo "WB IGO Rider present and matches canonical version"
 
   # --- README checks ---
   readme:
