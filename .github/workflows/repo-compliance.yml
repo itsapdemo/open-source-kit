@@ -115,6 +115,9 @@ jobs:
   # --- Languages via GitHub API + framework detection script ---
   tech-stack:
     runs-on: ubuntu-latest
+    outputs:
+      languages: ${{ steps.langs.outputs.languages }}
+      frameworks: ${{ steps.detect.outputs.frameworks }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -132,6 +135,7 @@ jobs:
       - name: Print languages
         run: echo '${{ steps.langs.outputs.languages }}'
       - name: Framework/manifest detection
+        id: detect
         run: python3 .compliance/.github/compliance/detect_stack.py
 
   # --- Secrets: TruffleHog secret scanning (free, no license required) ---
@@ -173,6 +177,9 @@ jobs:
   # --- AI usage hints (informational) ---
   ai-usage:
     runs-on: ubuntu-latest
+    outputs:
+      detected: ${{ steps.detect.outputs.detected }}
+      files: ${{ steps.detect.outputs.files }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -181,6 +188,7 @@ jobs:
           path: .compliance
           sparse-checkout: .github/compliance
       - name: Detect AI usage
+        id: detect
         run: python3 .compliance/.github/compliance/detect_ai_use.py
 
   # --- Dependency security via Dependabot API (free) ---
@@ -327,17 +335,11 @@ jobs:
             const jobs = {
               'License': '${{ needs.license.result }}',
               'README': '${{ needs.readme.result }}',
-              'Tech Stack': '${{ needs.tech-stack.result }}',
               'Secrets': '${{ needs.secrets.result }}',
               'Data Files': '${{ needs.data-files.result }}',
               'Dependencies': '${{ needs.dependencies.result }}',
               'Code Quality (Basic)': '${{ needs.code-quality-basic.result }}',
               'Code Quality (Sonar)': '${{ needs.code-quality-sonar.result }}'
-            };
-
-            // Informational jobs (don't block compliance)
-            const infoJobs = {
-              'AI Usage': '${{ needs.ai-usage.result }}'
             };
 
             // Get job URLs from workflow run
@@ -354,10 +356,8 @@ jobs:
             const jobNameMap = {
               'License': 'license',
               'README': 'readme',
-              'Tech Stack': 'tech-stack',
               'Secrets': 'secrets',
               'Data Files': 'data-files',
-              'AI Usage': 'ai-usage',
               'Dependencies': 'dependencies',
               'Code Quality (Basic)': 'code-quality-basic',
               'Code Quality (Sonar)': 'code-quality-sonar'
@@ -390,13 +390,32 @@ jobs:
               }
             }
 
-            // Build informational section
-            let infoItems = [];
-            for (const [name, result] of Object.entries(infoJobs)) {
-              const jobName = jobNameMap[name];
-              const jobUrl = jobUrlMap[jobName] || `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
-              infoItems.push(`- ℹ️ **[${name}](${jobUrl})** - ${result}`);
-            }
+            // Tech stack detection results
+            const languages = '${{ needs.tech-stack.outputs.languages }}' || '{}';
+            const frameworks = '${{ needs.tech-stack.outputs.frameworks }}' || '[]';
+            let langList = [];
+            try {
+              const langObj = JSON.parse(languages);
+              langList = Object.keys(langObj);
+            } catch (e) { langList = []; }
+            let frameworkList = [];
+            try {
+              frameworkList = JSON.parse(frameworks);
+            } catch (e) { frameworkList = []; }
+
+            // AI usage detection results
+            const aiDetected = '${{ needs.ai-usage.outputs.detected }}' === 'true';
+            const aiFiles = '${{ needs.ai-usage.outputs.files }}' || '[]';
+            let aiFileList = [];
+            try {
+              aiFileList = JSON.parse(aiFiles);
+            } catch (e) { aiFileList = []; }
+
+            // Build informational content
+            let infoContent = [];
+            infoContent.push(`- **Languages:** ${langList.length > 0 ? langList.join(', ') : 'None detected'}`);
+            infoContent.push(`- **Frameworks:** ${frameworkList.length > 0 ? frameworkList.join(', ') : 'None detected'}`);
+            infoContent.push(`- **AI Usage:** ${aiDetected ? aiFileList.slice(0, 5).map(f => '\`' + f + '\`').join(', ') + (aiFileList.length > 5 ? '...' : '') : 'Not detected'}`)
 
             const body = `## Compliance Check Results
 
@@ -410,7 +429,7 @@ jobs:
 
             ### Informational
 
-            ${infoItems.join('\n')}
+            ${infoContent.join('\n')}
 
             ---
             *This issue is automatically managed by the compliance workflow. It will be closed when all checks pass.*

@@ -20,3 +20,10 @@ if hits:
   print("AI usage indicators found in:")
   for h in hits: print(f"- {h}")
 
+# Output for GitHub Actions
+import json
+if "GITHUB_OUTPUT" in os.environ:
+  with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+    f.write(f"detected={'true' if hits else 'false'}\n")
+    f.write(f"files={json.dumps(hits[:10])}\n")  # Limit to 10 files
+
