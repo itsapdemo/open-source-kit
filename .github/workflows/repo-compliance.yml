@@ -323,17 +323,21 @@ jobs:
             const sha = context.sha.substring(0, 7);
             const issueTitle = `Open Source Compliance Check: ${repo}`;
 
-            // Job results from needs context
+            // Job results from needs context (compliance checks)
             const jobs = {
               'License': '${{ needs.license.result }}',
               'README': '${{ needs.readme.result }}',
               'Tech Stack': '${{ needs.tech-stack.result }}',
               'Secrets': '${{ needs.secrets.result }}',
               'Data Files': '${{ needs.data-files.result }}',
-              'AI Usage': '${{ needs.ai-usage.result }}',
               'Dependencies': '${{ needs.dependencies.result }}',
               'Code Quality (Basic)': '${{ needs.code-quality-basic.result }}',
               'Code Quality (Sonar)': '${{ needs.code-quality-sonar.result }}'
+            };
+
+            // Informational jobs (don't block compliance)
+            const infoJobs = {
+              'AI Usage': '${{ needs.ai-usage.result }}'
             };
 
             // Get job URLs from workflow run
@@ -386,6 +390,14 @@ jobs:
               }
             }
 
+            // Build informational section
+            let infoItems = [];
+            for (const [name, result] of Object.entries(infoJobs)) {
+              const jobName = jobNameMap[name];
+              const jobUrl = jobUrlMap[jobName] || `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
+              infoItems.push(`- ℹ️ **[${name}](${jobUrl})** - ${result}`);
+            }
+
             const body = `## Compliance Check Results
 
             **Commit:** \`${sha}\`
@@ -395,6 +407,10 @@ jobs:
             ### Checklist
 
             ${checklistItems.join('\n')}
+
+            ### Informational
+
+            ${infoItems.join('\n')}
 
             ---
             *This issue is automatically managed by the compliance workflow. It will be closed when all checks pass.*
