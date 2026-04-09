@@ -375,10 +375,10 @@ jobs:
             // Build checklist
             const statusIcon = (result) => {
               switch (result) {
-                case 'success': return '✅';
-                case 'failure': return '❌';
-                case 'skipped': return '⏭️';
-                case 'cancelled': return '🚫';
+                case 'success': return '🟢';
+                case 'failure': return '🔴';
+                case 'skipped': return '⚪';
+                case 'cancelled': return '🟠';
                 default: return '❓';
               }
             };
