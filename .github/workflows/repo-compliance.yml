@@ -54,7 +54,7 @@ jobs:
           test -f README.md || { echo "::error::Missing README.md"; exit 1; }
           markdownlint README.md || true
       - name: Content checks
-        run: python .github/compliance/check_readme.py
+        run: python3 .github/compliance/check_readme.py
 
   # --- Languages via GitHub API + framework detection script ---
   tech-stack:
@@ -71,7 +71,7 @@ jobs:
       - name: Print languages
         run: echo '${{ steps.langs.outputs.languages }}'
       - name: Framework/manifest detection
-        run: python .github/compliance/detect_stack.py
+        run: python3 .github/compliance/detect_stack.py
 
   # --- Secrets: working tree + optional history ---
   secrets:
@@ -97,14 +97,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python .github/compliance/check_data_files.py
+      - run: python3 .github/compliance/check_data_files.py
 
   # --- AI usage hints (informational) ---
   ai-usage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python .github/compliance/detect_ai_use.py
+      - run: python3 .github/compliance/detect_ai_use.py
 
   # --- Dependency security via Dependabot API (free) ---
   # Requires Dependabot to be enabled org-wide
