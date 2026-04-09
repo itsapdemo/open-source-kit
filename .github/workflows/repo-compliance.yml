@@ -2,7 +2,7 @@ name: Repo Compliance
 # Prerequisites:
 #   - Enable Dependabot org-wide: Settings > Code security > Dependabot alerts
 #   - The dependencies job fetches alerts via GitHub API (free tier)
-#   - Secret scanning uses Gitleaks/TruffleHog (GitHub's is $19/committer)
+#   - Secret scanning uses TruffleHog (GitHub's is $19/committer)
 #   - Code quality uses local linters/Super-Linter (GitHub CodeQL is $30/committer)
 on:
   workflow_call:
@@ -87,25 +87,28 @@ jobs:
       - name: Framework/manifest detection
         run: python3 .compliance/.github/compliance/detect_stack.py
 
-  # --- Secrets: working tree + optional history ---
+  # --- Secrets: TruffleHog secret scanning (free, no license required) ---
   secrets:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - name: Gitleaks (working tree)
-        uses: gitleaks/gitleaks-action@v2
+      - name: TruffleHog scan
+        uses: trufflesecurity/trufflehog@main
         with:
-          additional_args: "--no-banner --report-format sarif --report-path gitleaks.sarif"
-      - name: Upload SARIF (secrets)
-        uses: github/codeql-action/upload-sarif@v3
-        with: { sarif_file: gitleaks.sarif }
-        continue-on-error: true  # May fail on private repos without GHAS
-      - name: Optional history scan (TruffleHog)
+          extra_args: --no-update --only-verified
+        continue-on-error: true
+      - name: TruffleHog deep history scan
         if: ${{ inputs.history_depth > 0 }}
         run: |
-          npx trufflehog git --no-update --json . > trufflehog.json || true
-          jq '.[0]' trufflehog.json >/dev/null 2>&1 || echo "No trufflehog findings"
+          curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+          trufflehog git file://. --no-update --json > trufflehog-results.json 2>/dev/null || true
+          if [ -s trufflehog-results.json ]; then
+            echo "::warning::Potential secrets found in git history"
+            cat trufflehog-results.json | head -50
+          else
+            echo "No secrets found in history scan"
+          fi
 
   # --- Data file scan (warn/fail per policy) ---
   data-files:
