@@ -4,17 +4,13 @@ on:
   pull_request:
   schedule: [{ cron: '17 2 * * *' }]
   workflow_dispatch:
-    inputs:
-      history_depth:
-        description: "Commits to scan for secrets (0 = off)"
-        default: "0"
 permissions:
   contents: read
   security-events: write
+  actions: read
+  checks: write
+  pull-requests: read
 jobs:
   run:
-    uses: worldbank/open-source-kit/.github/workflows/repo-compliance.yml@main
-    with:
-      history_depth: ${{ github.event.inputs.history_depth || 0 }}
+    uses: itsapdemo/open-source-kit/.github/workflows/repo-compliance.yml@main
     secrets: inherit
-
