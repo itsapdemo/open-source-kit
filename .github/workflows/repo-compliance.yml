@@ -25,7 +25,7 @@ permissions:
   statuses: write
 
 jobs:
-  # --- License via GitHub API (whitelist MIT/BSD) + WB IGO Rider for MIT ---
+  # --- License via GitHub API (whitelist MIT/Apache-2.0) + WB IGO Riders ---
   license:
     runs-on: ubuntu-latest
     steps:
@@ -42,7 +42,7 @@ jobs:
           SPDX="${{ steps.gh-license.outputs.spdx }}"
           echo "Detected SPDX: ${SPDX:-<none>}"
           case "$SPDX" in
-            MIT|BSD-2-Clause|BSD-3-Clause) echo "Whitelisted license: $SPDX" ;;
+            MIT|Apache-2.0) echo "Whitelisted license: $SPDX" ;;
             "") echo "::error::License missing or undetected"; exit 1 ;;
             *) echo "::error::Non-whitelisted license: $SPDX"; exit 1 ;;
           esac
@@ -62,6 +62,29 @@ jobs:
 
           if ! diff -q "$RIDER_FILE" /tmp/canonical-rider.md >/dev/null 2>&1; then
             echo "::error::WB-IGO-RIDER.md content does not match canonical version at $CANONICAL_URL"
+            echo "::group::Diff"
+            diff "$RIDER_FILE" /tmp/canonical-rider.md || true
+            echo "::endgroup::"
+            exit 1
+          fi
+
+          echo "WB IGO Rider present and matches canonical version"
+      - name: Check WB IGO Apache Rider (required for Apache-2.0)
+        if: steps.gh-license.outputs.spdx == 'Apache-2.0'
+        run: |
+          RIDER_FILE="WB-IGO-RIDER-APACHE.md"
+          CANONICAL_URL="https://raw.githubusercontent.com/worldbank/.github/main/WB-IGO-RIDER-APACHE.md"
+
+          if [ ! -f "$RIDER_FILE" ]; then
+            echo "::error::Apache-2.0 license requires WB-IGO-RIDER-APACHE.md file. See: https://github.com/worldbank/.github/blob/main/WB-IGO-RIDER-APACHE.md"
+            exit 1
+          fi
+
+          echo "Checking rider content matches canonical version..."
+          curl -sSfL "$CANONICAL_URL" -o /tmp/canonical-rider.md
+
+          if ! diff -q "$RIDER_FILE" /tmp/canonical-rider.md >/dev/null 2>&1; then
+            echo "::error::WB-IGO-RIDER-APACHE.md content does not match canonical version at $CANONICAL_URL"
             echo "::group::Diff"
             diff "$RIDER_FILE" /tmp/canonical-rider.md || true
             echo "::endgroup::"
