@@ -1,19 +1,7 @@
 import json, os, tomllib
 
-stack = {}
 def exists(*names): return any(os.path.exists(n) for n in names)
 
-if exists("package.json"): stack["javascript"] = "node"
-if exists("requirements.txt","pyproject.toml","setup.cfg"): stack["python"] = "pip/pyproject"
-if exists("pom.xml","build.gradle","build.gradle.kts"): stack["java"] = "maven/gradle"
-if exists("go.mod"): stack["go"] = "go modules"
-if exists("Cargo.toml"): stack["rust"] = "cargo"
-if exists("composer.json"): stack["php"] = "composer"
-if exists("Gemfile"): stack["ruby"] = "bundler"
-if exists("DESCRIPTION"): stack["r"] = "r (package)"
-if any(n.endswith(".do") or n.endswith(".ado") for n in os.listdir(".")): stack["stata"] = "stata"
-
-# extra framework hints
 frameworks = []
 if os.path.exists("package.json"):
     import json as _json
@@ -77,13 +65,11 @@ for nb in [f for f in os.listdir(".") if f.endswith(".ipynb")]:
                 break
     except Exception: pass
 
-result = {"stack": stack, "framework_hints": sorted(set(frameworks))}
+result = {"frameworks": sorted(set(frameworks))}
 print(json.dumps(result, indent=2))
 
 # Output for GitHub Actions
-import sys
 if "GITHUB_OUTPUT" in os.environ:
     with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-        f.write(f"languages={json.dumps(list(stack.keys()))}\n")
         f.write(f"frameworks={json.dumps(sorted(set(frameworks)))}\n")
 

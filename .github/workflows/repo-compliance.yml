@@ -118,6 +118,7 @@ jobs:
     outputs:
       languages: ${{ steps.langs.outputs.languages }}
       frameworks: ${{ steps.detect.outputs.frameworks }}
+      # languages comes from GitHub API, frameworks from detect_stack.py
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
