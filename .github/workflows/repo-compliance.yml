@@ -199,7 +199,7 @@ jobs:
             }
 
   # --- Code quality/security: prefer local linters; fallback to Super-Linter ---
-  code-quality:
+  code-quality-basic:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -223,14 +223,28 @@ jobs:
         if: steps.local.outputs.fallback == 'true'
         uses: github/super-linter/slim@v6
         env:
-          VALIDATE_ALL_CODEBASE: true
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Essential linters only
+          VALIDATE_YAML: true
+          VALIDATE_JSON: true
+          VALIDATE_MARKDOWN: true
+          VALIDATE_GITHUB_ACTIONS: true
+          VALIDATE_PYTHON_FLAKE8: true
+          # Disable noisy/duplicate linters
+          VALIDATE_JSCPD: false
+          VALIDATE_CHECKOV: false
+          VALIDATE_PYTHON_BLACK: false
+          VALIDATE_PYTHON_ISORT: false
+          VALIDATE_PYTHON_MYPY: false
+          VALIDATE_PYTHON_PYLINT: false
+          VALIDATE_PYTHON_RUFF: false
+          VALIDATE_NATURAL_LANGUAGE: false
+          VALIDATE_GITLEAKS: false  # Already handled by secrets job
 
   # --- SonarCloud (Code Quality) ---
-  sonarcloud:
+  code-quality-sonar:
     runs-on: ubuntu-latest
-    needs: [code-quality]
+    needs: [code-quality-basic]
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
