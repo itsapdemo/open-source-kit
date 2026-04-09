@@ -165,6 +165,9 @@ jobs:
   # --- Data file scan (warn/fail per policy) ---
   data-files:
     runs-on: ubuntu-latest
+    outputs:
+      detected: ${{ steps.check.outputs.detected }}
+      count: ${{ steps.check.outputs.count }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -173,6 +176,7 @@ jobs:
           path: .compliance
           sparse-checkout: .github/compliance
       - name: Check data files
+        id: check
         run: python3 .compliance/.github/compliance/check_data_files.py
 
   # --- AI usage hints (informational) ---
@@ -412,11 +416,25 @@ jobs:
               aiFileList = JSON.parse(aiFiles);
             } catch (e) { aiFileList = []; }
 
+            // Data files detection results
+            const dataFiles = '${{ needs.data-files.outputs.detected }}' || '[]';
+            const dataCount = parseInt('${{ needs.data-files.outputs.count }}' || '0');
+            let dataFileList = [];
+            try {
+              dataFileList = JSON.parse(dataFiles);
+            } catch (e) { dataFileList = []; }
+
             // Build informational content
             let infoContent = [];
             infoContent.push(`- **Languages:** ${langList.length > 0 ? langList.join(', ') : 'None detected'}`);
             infoContent.push(`- **Frameworks:** ${frameworkList.length > 0 ? frameworkList.join(', ') : 'None detected'}`);
-            infoContent.push(`- **AI Usage:** ${aiDetected ? aiFileList.slice(0, 5).map(f => '\`' + f + '\`').join(', ') + (aiFileList.length > 5 ? '...' : '') : 'Not detected'}`)
+            infoContent.push(`- **AI Usage:** ${aiDetected ? aiFileList.slice(0, 5).map(f => '\`' + f + '\`').join(', ') + (aiFileList.length > 5 ? '...' : '') : 'Not detected'}`);
+            if (dataCount > 0) {
+              infoContent.push(`- **Data Files (${dataCount}):** ${dataFileList.slice(0, 5).map(f => '\`' + f + '\`').join(', ')}${dataCount > 5 ? '...' : ''}`);
+              infoContent.push(`  - ⚠️ *Please verify these files should be in the repo and not deposited in a data catalog*`);
+            } else {
+              infoContent.push(`- **Data Files:** None detected`);
+            }
 
             const body = `## Compliance Check Results
 
