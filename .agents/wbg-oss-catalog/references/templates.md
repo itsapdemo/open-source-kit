@@ -60,22 +60,46 @@ External/personal emails won't satisfy the requirement — the contact must be a
 
 ## License
 
+[Use **one** of the following paragraphs verbatim — it must match `LICENSE` and the IGO rider file in the repo.]
+
+**MIT + WB-IGO-RIDER.md:**
+
 This project is licensed under the MIT License together with the World Bank IGO Rider.
 The Rider is purely procedural: it reserves all privileges and immunities enjoyed by the
 World Bank, without adding restrictions to the MIT permissions. Please review both files
 before using, distributing or contributing.
 
-See [LICENSE](LICENSE) for the full license text.
+See [LICENSE](LICENSE) and [WB-IGO-RIDER.md](WB-IGO-RIDER.md).
+
+**Apache License, Version 2.0 + WB-IGO-RIDER-APACHE.md:**
+
+This project is licensed under the Apache License, Version 2.0 together with the World Bank IGO Rider.
+The Rider is purely procedural: it reserves all privileges and immunities enjoyed by the
+World Bank, without adding restrictions to the Apache permissions. Please review both files
+before using, distributing or contributing.
+
+See [LICENSE](LICENSE) and [WB-IGO-RIDER-APACHE.md](WB-IGO-RIDER-APACHE.md).
 ```
 
 ### The license notice (verbatim — do not paraphrase)
 
-The following exact text must appear at the bottom of the README:
+The following exact text must appear at the bottom of the README. Pick the block that matches the repo's base license and rider (see `references/checklist.md` Requirement 1g).
+
+**MIT:**
 
 ```
 This project is licensed under the MIT License together with the World Bank IGO Rider.
 The Rider is purely procedural: it reserves all privileges and immunities enjoyed by the
 World Bank, without adding restrictions to the MIT permissions. Please review both files
+before using, distributing or contributing.
+```
+
+**Apache License, Version 2.0:**
+
+```
+This project is licensed under the Apache License, Version 2.0 together with the World Bank IGO Rider.
+The Rider is purely procedural: it reserves all privileges and immunities enjoyed by the
+World Bank, without adding restrictions to the Apache permissions. Please review both files
 before using, distributing or contributing.
 ```
 
@@ -97,6 +121,7 @@ authors:
 version: "1.0.0"
 date-released: "[YYYY-MM-DD]"
 license: MIT
+# Or for Apache 2.0: license: Apache-2.0
 repository-code: "https://github.com/worldbank/[repo-name]"
 keywords:
   - "[keyword1]"
@@ -147,9 +172,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-The WB IGO Rider must also be present. Either:
+The WB IGO Rider (MIT) must also be present. Either:
 - Fetch the current text from https://github.com/worldbank/.github/blob/main/WB-IGO-RIDER.md and save as `WB-IGO-RIDER.md`
 - Or create `WB-IGO-RIDER.md` that clearly references the canonical URL
+
+---
+
+## LICENSE — Apache License, Version 2.0
+
+Use the **verbatim** Apache License, Version 2.0 text (not summarized) from the Apache Software Foundation:
+
+- https://www.apache.org/licenses/LICENSE-2.0.txt
+
+In the **APPENDIX** (end of the license), set the copyright line to something like:
+
+```
+Copyright [yyyy] The World Bank
+```
+
+The WB IGO Rider (**Apache** variant) must also be present — it is separate from the MIT rider:
+
+- Fetch the current text from https://github.com/worldbank/.github/blob/main/WB-IGO-RIDER-APACHE.md and save as `WB-IGO-RIDER-APACHE.md` (or equivalent), or reference that canonical URL clearly in-repo.
+
+Do **not** use `WB-IGO-RIDER.md` (MIT) with an Apache `LICENSE`; the Apache stack requires `WB-IGO-RIDER-APACHE.md`.
+
+If third-party code requires attribution, maintain a `NOTICE` file per Apache 2.0 §4(d).
 
 ---
 

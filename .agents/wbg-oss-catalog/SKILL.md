@@ -4,7 +4,8 @@ description: >
   Audits and prepares a GitHub repository for endorsement in the World Bank Group (WBG) Open Source Code Catalog.
   Use this skill whenever a user mentions submitting a repo to the World Bank open source catalog,
   WBG OSS endorsement, preparing a repo for World Bank review, or wants to check/fix a repository against
-  the WBG checklist. Also trigger when a user says their repo needs the WB license, citation file, code of
+  the WBG checklist. Also trigger when a user says their repo needs the WB license (MIT or Apache 2.0 with the
+  matching IGO rider), citation file, code of
   conduct, contributing guide, or any combination of World Bank open source requirements. Even if they just
   say "prepare my repo for the World Bank catalog" or "audit my repo for WBG", use this skill.
 ---
@@ -21,7 +22,7 @@ Ask the user which directory to audit (or confirm if a path is already clear fro
 
 - Root file listing (check for README.md, LICENSE, CITATION.cff, CODE_OF_CONDUCT.md, CONTRIBUTING.md, `.env*`, `*.bib`)
 - Contents of README.md (if it exists)
-- Any existing LICENSE file
+- Any existing LICENSE file — determine whether the project uses **MIT** or **Apache License, Version 2.0** (see `references/checklist.md` Requirement 3). Verify the README license notice and IGO rider file match that choice (`WB-IGO-RIDER.md` with MIT; `WB-IGO-RIDER-APACHE.md` with Apache).
 - `.gitignore` or `.env.example` patterns
 - A quick search for potential secrets and hard-coded values
 
@@ -58,7 +59,7 @@ Read `references/checklist.md` for the full detail on each requirement. Here's t
 |---|-------------|-----------|
 | 1 | README.md | Project name, description (2-3 sentences), screenshot if applicable, Getting Started, docs link, contact (@worldbank.org), license notice |
 | 2 | Repository Details | Description, website/docs link, relevant topics set in GitHub repo settings |
-| 3 | License | MIT License + WB IGO Rider; specific notice text at bottom of README |
+| 3 | License | **MIT** or **Apache-2.0**, each with the matching WB IGO Rider file; README must use the **matching** verbatim notice from Requirement 1g (MIT vs Apache text differs) |
 | 5 | Documentation | Web-based docs (GitHub Pages, Jupyter Book, etc.) accessible to non-technical audiences |
 | 6 | CITATION.cff | Citation file using CFF format for reproducible research |
 | 7 | Code of Conduct | CODE_OF_CONDUCT.md present or linked |
@@ -67,6 +68,19 @@ Read `references/checklist.md` for the full detail on each requirement. Here's t
 | 10 | Bibliography (optional) | BibTeX `.bib` file in `docs/` |
 
 *(Note: item 4 is not in the checklist — items go 1, 2, 3, 5, 6, 7, 8, 9, 10.)*
+
+### License choice (MIT vs Apache)
+
+Catalog-eligible projects may use either **MIT** or **Apache License, Version 2.0** as the base license, each paired with the correct rider:
+
+| Base license | IGO rider (canonical) |
+|--------------|------------------------|
+| MIT License | [`WB-IGO-RIDER.md`](https://github.com/worldbank/.github/blob/main/WB-IGO-RIDER.md) |
+| Apache License, Version 2.0 | [`WB-IGO-RIDER-APACHE.md`](https://github.com/worldbank/.github/blob/main/WB-IGO-RIDER-APACHE.md) |
+
+Do **not** mix: an Apache `LICENSE` must not ship with the MIT-only rider (and vice versa). The README bottom notice must be the verbatim block for that same pair — see `references/checklist.md` §1g.
+
+When helping the user choose: Apache is common for larger ecosystems (patent grant, NOTICE file patterns); MIT is minimal and widely used. If the repo already has one license on disk, align the rider and README to that unless the user explicitly wants to relicense.
 
 ---
 

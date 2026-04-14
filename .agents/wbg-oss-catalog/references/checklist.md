@@ -23,12 +23,23 @@ Link to thorough documentation — either within the README or pointing to a sep
 Must include World Bank staff names and their `@worldbank.org` email addresses, OR a mailbox/distribution list. Personal emails outside WB domain do not count.
 
 ### 1g. License Notice
-The following **exact text** must appear at the bottom of the README:
+The following **exact text** must appear at the bottom of the README. Use **one** of the two blocks below — the block must match the base license in `LICENSE` and the IGO rider file in the repo (see Requirement 3).
+
+**If the project uses the MIT License** (with [`WB-IGO-RIDER.md`](https://github.com/worldbank/.github/blob/main/WB-IGO-RIDER.md)):
 
 ```
 This project is licensed under the MIT License together with the World Bank IGO Rider.
 The Rider is purely procedural: it reserves all privileges and immunities enjoyed by the
 World Bank, without adding restrictions to the MIT permissions. Please review both files
+before using, distributing or contributing.
+```
+
+**If the project uses the Apache License, Version 2.0** (with [`WB-IGO-RIDER-APACHE.md`](https://github.com/worldbank/.github/blob/main/WB-IGO-RIDER-APACHE.md)):
+
+```
+This project is licensed under the Apache License, Version 2.0 together with the World Bank IGO Rider.
+The Rider is purely procedural: it reserves all privileges and immunities enjoyed by the
+World Bank, without adding restrictions to the Apache permissions. Please review both files
 before using, distributing or contributing.
 ```
 
@@ -48,15 +59,25 @@ This cannot be checked by reading files — ask the user to confirm or tell them
 
 ## Requirement 3: License
 
-If no license exists, the repo must adopt:
-- **MIT License** (standard text)
-- **World Bank IGO Rider**: https://github.com/worldbank/.github/blob/main/WB-IGO-RIDER.md
+If no license exists, the repo must adopt **one** of these stacks (base license + matching IGO rider). Do not mix MIT with the Apache rider or Apache with the MIT rider.
 
-Both should be present. Typically:
-- `LICENSE` or `LICENSE.md` — the MIT License text
-- `LICENSE-IGO-RIDER.md` or similar — the WB IGO Rider, OR a reference/link to the official one
+### Option A — MIT License
 
-The README must also contain the notice text from Requirement 1g.
+- **MIT License** (standard text) in `LICENSE` or `LICENSE.md`
+- **World Bank IGO Rider (MIT)**: https://github.com/worldbank/.github/blob/main/WB-IGO-RIDER.md  
+  Store as `WB-IGO-RIDER.md` (or similar) with the canonical text, or ensure the repo clearly references this file.
+
+### Option B — Apache License, Version 2.0
+
+- **Apache License, Version 2.0** (full standard text) in `LICENSE` or `LICENSE.md`
+- **World Bank IGO Rider (Apache)**: https://github.com/worldbank/.github/blob/main/WB-IGO-RIDER-APACHE.md  
+  Store as `WB-IGO-RIDER-APACHE.md` (or similar) with the canonical text, or ensure the repo clearly references this file.
+
+Apache-licensed projects often also include a `NOTICE` file when required by third-party notices; follow Apache 2.0 practice if the project bundles such material.
+
+**README:** The notice at the bottom of README.md must be the verbatim block from Requirement 1g that matches the chosen option (MIT notice vs Apache notice).
+
+**Audit:** Flag **Needs Work** if `LICENSE` indicates Apache 2.0 but only `WB-IGO-RIDER.md` (MIT) is present, or if the README uses the MIT notice while `LICENSE` is Apache (or the reverse).
 
 ---
 
@@ -98,6 +119,8 @@ authors:
 version: "1.0.0"
 date-released: "YYYY-MM-DD"
 ```
+
+Set `license` to the SPDX identifier that matches the repo: `MIT` or `Apache-2.0` (see Requirement 3).
 
 ---
 
