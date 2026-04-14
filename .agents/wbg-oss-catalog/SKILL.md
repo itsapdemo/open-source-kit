@@ -1,5 +1,5 @@
 ---
-name: wb-oss-catalog
+name: wbg-oss-catalog
 description: >
   Audits and prepares a GitHub repository for endorsement in the World Bank Group (WBG) Open Source Code Catalog.
   Use this skill whenever a user mentions submitting a repo to the World Bank open source catalog,
