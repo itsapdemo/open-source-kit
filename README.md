@@ -1,18 +1,18 @@
 # Open Source Compliance Kit
 
-Reusable GitHub Actions workflow for open source compliance checks.
+Reusable GitHub Actions workflow and VS Code Copilot skill for World Bank open source compliance.
 
 ## Checks
 
-- **License** - Whitelist: MIT, Apache-2.0. Requires WB IGO Rider for each.
-- **README** - Presence and content checks
-- **Secrets** - TruffleHog scan (working tree + optional history)
-- **Data Files** - Warns on large data files; suggests data catalog
-- **Dependencies** - Dependabot API for vulnerability alerts
-- **Code Quality (Basic)** - Local linters (eslint/ruff/flake8) or Super-Linter fallback
-- **Code Quality (Sonar)** - SonarCloud analysis
-- **Tech Stack** - GitHub Languages API + framework detection (informational)
-- **AI Usage** - Detects AI library usage (informational)
+- **License** — Whitelist: MIT, Apache-2.0. Requires WB IGO Rider for each.
+- **README** — Presence and content checks
+- **Secrets** — TruffleHog scan (working tree + optional history)
+- **Data Files** — Warns on large data files; suggests data catalog
+- **Dependencies** — Dependabot API for vulnerability alerts
+- **Code Quality (Basic)** — Local linters (eslint/ruff/flake8) or Super-Linter fallback
+- **Code Quality (CodeQL)** — GitHub CodeQL analysis (public repos only, free tier)
+- **Tech Stack** — GitHub Languages API + framework detection (informational)
+- **AI Usage** — Detects AI library usage (informational)
 
 On the default branch, a **compliance issue** is automatically created/updated with a checklist of results. The issue closes when all checks pass.
 
@@ -20,45 +20,29 @@ On the default branch, a **compliance issue** is automatically created/updated w
 
 1. Enable **Dependabot alerts** org-wide: Settings > Code security > Dependabot alerts
 
-2. Create/confirm a **SonarCloud** organization linked to your GitHub org
-
-3. In **GitHub Org Secrets**, add:
-   - `SONAR_TOKEN` - SonarCloud user token with "Execute Analysis"
-   - `SONAR_ORG_KEY` - Your SonarCloud org key
-   - `DEPENDABOT_TOKEN` *(optional)* - PAT with `security_events` scope for Dependabot API access on private repos
+2. *(Optional)* In **GitHub Org Secrets**, add:
+   - `DEPENDABOT_TOKEN` — PAT with `security_events` scope for Dependabot API access on private repos
 
 ## How Teams Adopt
 
-Add a caller workflow to each repo:
+### Step 1: Add the compliance workflow
 
-```yaml
-# .github/workflows/compliance.yml
-name: Open Source Compliance
-on:
-  push:
-  pull_request:
-  schedule: [{ cron: '17 2 * * *' }]
-  workflow_dispatch:
-    inputs:
-      history_depth:
-        description: 'Commits to scan for secrets (0 = off)'
-        type: number
-        default: 0
-permissions:
-  contents: read
-  security-events: write
-  actions: read
-  checks: write
-  pull-requests: read
-  statuses: write
-  issues: write
-jobs:
-  run:
-    uses: itsapdemo/open-source-kit/.github/workflows/repo-compliance.yml@main
-    with:
-      history_depth: ${{ inputs.history_depth || 0 }}
-    secrets: inherit
-```
+Copy [`.github/compliance/sample-per-repo-caller.yml`](.github/compliance/sample-per-repo-caller.yml) to the target repo as `.github/workflows/compliance.yml`. Push to the default branch. The workflow runs automatically and creates a compliance issue with a checklist of results.
+
+### Step 2: Copy the Copilot skill
+
+Copy the [`.github/skills/wbg-oss-review/`](.github/skills/wbg-oss-review/) directory to the target repo. This gives VS Code access to the review skill.
+
+### Step 3: Fix compliance failures
+
+1. Clone the target repo and open it in VS Code
+2. Invoke the **wbg-oss-review** skill in Copilot
+3. Provide: (a) the compliance issue content and (b) the intranet request form data
+4. The skill audits the repo, creates/updates compliance files, and generates PR content
+5. Create a branch, commit the changes, and open a PR using the generated content
+6. The requestor merges the PR — the compliance workflow re-runs automatically
+7. When all checks pass, the compliance issue closes
+8. Change the repo visibility to public
 
 ## WB IGO Riders
 

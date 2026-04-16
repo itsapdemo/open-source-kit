@@ -1,3 +1,17 @@
+# Open Source Compliance Workflow
+# Copy this file to your repo as .github/workflows/compliance.yml
+#
+# What it does:
+#   - Runs compliance checks on push, PR, and daily
+#   - Creates/updates a "compliance" issue with a checklist of results
+#   - Closes the issue automatically when all checks pass
+#
+# To fix failures:
+#   1. Copy .github/skills/wbg-oss-review/ from open-source-kit to your repo
+#   2. Open in VS Code and invoke the wbg-oss-review skill
+#   3. Provide the compliance issue content and intranet form data
+#   4. Commit fixes to a branch and create a PR
+#
 name: Open Source Compliance
 on:
   push:

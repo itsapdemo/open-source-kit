@@ -292,39 +292,25 @@ jobs:
           VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_PYTHON_FLAKE8: true
 
-  # --- SonarCloud (Code Quality) ---
-  code-quality-sonar:
+  # --- Code quality: GitHub CodeQL (free for public repos) ---
+  code-quality-codeql:
     runs-on: ubuntu-latest
-    needs: [code-quality-basic]
+    if: github.event.repository.visibility == 'public'
+    permissions:
+      security-events: write
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-
-      # Create sonar-project.properties on the fly if repo doesn't have one
-      - name: Create Sonar properties if missing
-        run: |
-          if [ ! -f sonar-project.properties ]; then
-            REPO_KEY="${{ github.repository }}"           # e.g. org/repo
-            SAFE_KEY="${REPO_KEY//\//_}"                  # org_repo
-            echo "sonar.organization=${{ secrets.SONAR_ORG_KEY }}"        > sonar-project.properties
-            echo "sonar.projectKey=${SAFE_KEY}"           >> sonar-project.properties
-            echo "sonar.projectName=${REPO_KEY}"          >> sonar-project.properties
-            echo "sonar.sources=."                        >> sonar-project.properties
-            echo "sonar.exclusions=**/*.md,**/node_modules/**,**/.venv/**,**/dist/**,**/build/**" >> sonar-project.properties
-            echo "sonar.scm.revision=${{ github.sha }}"    >> sonar-project.properties
-          fi
-          cat sonar-project.properties
-
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v2
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: autodetect
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
 
   # --- Summary: Create/update issue for failed checks (default branch only) ---
   summary:
     runs-on: ubuntu-latest
-    needs: [license, readme, tech-stack, secrets, data-files, ai-usage, dependencies, code-quality-basic, code-quality-sonar]
+    needs: [license, readme, tech-stack, secrets, data-files, ai-usage, dependencies, code-quality-basic, code-quality-codeql]
     if: always() && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     steps:
       - uses: actions/github-script@v7
@@ -344,7 +330,7 @@ jobs:
               'Data Files': '${{ needs.data-files.result }}',
               'Dependencies': '${{ needs.dependencies.result }}',
               'Code Quality (Basic)': '${{ needs.code-quality-basic.result }}',
-              'Code Quality (Sonar)': '${{ needs.code-quality-sonar.result }}'
+              'Code Quality (CodeQL)': '${{ needs.code-quality-codeql.result }}'
             };
 
             // Get job URLs from workflow run
@@ -369,7 +355,7 @@ jobs:
               'Data Files': 'data-files',
               'Dependencies': 'dependencies',
               'Code Quality (Basic)': 'code-quality-basic',
-              'Code Quality (Sonar)': 'code-quality-sonar'
+              'Code Quality (CodeQL)': 'code-quality-codeql'
             };
 
             // Build checklist
