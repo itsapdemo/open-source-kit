@@ -1,16 +1,28 @@
 ---
 name: wbg-oss-review
 description: >
-  Reviews and prepares a GitHub repository for World Bank Group (WBG) open source publication.
-  Works with the compliance workflow results and intranet request form data to audit the repo,
-  fix compliance failures, and generate PR content. Use this skill when a user mentions:
-  preparing a repo for open source, WBG compliance review, fixing compliance failures,
-  World Bank license/rider requirements, open source publication, or "review this repo".
+  OSPO lead failsafe review for World Bank Group (WBG) open source publication.
+  This is Stage 2 of a two-stage process: Stage 1 is the automated compliance
+  workflow (CI) that runs on every push/PR; Stage 2 is this skill, invoked manually
+  by the OSPO lead before approving publication. Works with the compliance workflow
+  results and intranet request form data to audit the repo, fix compliance failures,
+  and generate PR content. Use this skill when a user mentions: preparing a repo for
+  open source, WBG compliance review, fixing compliance failures, World Bank
+  license/rider requirements, open source publication, or "review this repo".
 ---
 
 # WBG Open Source Review — Copilot Agent Skill
 
-This skill helps the OSPO lead review and prepare GitHub repositories for World Bank open source publication. It takes the compliance workflow issue report and intranet request form data as inputs, independently validates the repo, analyzes subjective form fields, creates or fixes compliance files, and generates PR content. The user handles all GitHub interactions (creating branches, PRs, and changing repo visibility).
+This skill is the OSPO lead's **failsafe review** (Stage 2) before approving a repository for public release.
+
+The review process has two stages:
+
+1. **Stage 1 — Automated CI**: The team adds the compliance workflow to their repo. It runs on every push/PR/daily and creates a compliance issue with pass/fail results. This is the initial gate and the ongoing check after the repo is public.
+2. **Stage 2 — OSPO Review (this skill)**: The OSPO lead clones the repo, copies this skill in, and invokes it. The skill cross-references the automated results with the intranet request form, independently audits the repo, analyzes subjective fields (risk, maintenance, licensing), and generates fixes + PR content.
+
+After Stage 2 approval, the OSPO lead manually changes the repo visibility to public. CodeQL analysis activates automatically once the repo is public (free tier).
+
+The user handles all GitHub interactions (creating branches, PRs, and changing repo visibility).
 
 ## Reference Files
 
@@ -21,14 +33,16 @@ This skill helps the OSPO lead review and prepare GitHub repositories for World 
 
 ### Phase 1: Inputs
 
-#### Step 1: Get the compliance issue report
+#### Step 1: Get the compliance issue report (Stage 1 output)
 
-Ask the user to paste the compliance issue content from the target repo. This issue is auto-created by the compliance workflow (labeled `compliance`, titled "Open Source Compliance Check: {repo}") and contains:
+Ask the user to paste the compliance issue content from the target repo. This issue is auto-created by the Stage 1 automated compliance workflow (labeled `compliance`, titled "Open Source Compliance Check: {repo}") and contains:
 
-- A checklist of pass/fail results for: License, README, Secrets, Data Files, Dependencies, Code Quality
+- A checklist of pass/fail results for: License, README, Secrets, Data Files, Dependencies, Code Quality (Basic), Code Quality (CodeQL)
 - Informational results: Languages, Frameworks, AI Usage, Data Files detected
 
-Extract which checks passed and which failed. If the user hasn't run the workflow yet, tell them to push with the compliance workflow (`.github/workflows/compliance.yml`) and check the issue it creates.
+Extract which checks passed and which failed. If the user hasn't run the workflow yet, tell them to add the compliance workflow (`.github/workflows/compliance.yml`) from the open-source-kit, push to the default branch, and check the issue it creates.
+
+**Note on CodeQL**: The Code Quality (CodeQL) check only runs on public repositories (free tier). When reviewing a private repo pre-publication, expect this check to show as "skipped" — this is normal. CodeQL will activate automatically once the repo is made public.
 
 #### Step 2: Get the intranet request form data
 

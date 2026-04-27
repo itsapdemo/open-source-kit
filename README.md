@@ -23,26 +23,44 @@ On the default branch, a **compliance issue** is automatically created/updated w
 2. *(Optional)* In **GitHub Org Secrets**, add:
    - `DEPENDABOT_TOKEN` — PAT with `security_events` scope for Dependabot API access on private repos
 
+## How It Works — Two-Stage Review
+
+Open source publication follows a two-stage process:
+
+1. **Stage 1 — Automated CI**: The team adds the compliance workflow to their repo. It runs on every push, PR, and daily schedule. A compliance issue is auto-created with pass/fail results. The team iterates until checks pass.
+2. **Stage 2 — OSPO Review**: The OSPO lead clones the repo, copies the Copilot skill in, and invokes it as a failsafe review. The skill cross-references automated results with the intranet request form, audits the repo independently, and generates fixes + PR content.
+
+After both stages pass, the OSPO lead **manually changes the repo visibility to public**. CodeQL analysis activates automatically on public repos (free tier).
+
+The compliance workflow continues running after publication as an ongoing check.
+
 ## How Teams Adopt
 
 ### Step 1: Add the compliance workflow
 
 Copy [`.github/compliance/sample-per-repo-caller.yml`](.github/compliance/sample-per-repo-caller.yml) to the target repo as `.github/workflows/compliance.yml`. Push to the default branch. The workflow runs automatically and creates a compliance issue with a checklist of results.
 
-### Step 2: Copy the Copilot skill
+The team reviews the compliance issue and fixes failures. The workflow re-runs on each push and updates the issue automatically.
 
-Copy the [`.github/skills/wbg-oss-review/`](.github/skills/wbg-oss-review/) directory to the target repo. This gives VS Code access to the review skill.
+### Step 2: OSPO review (when ready for publication)
 
-### Step 3: Fix compliance failures
+When the team believes their repo is ready, the OSPO lead:
 
-1. Clone the target repo and open it in VS Code
-2. Invoke the **wbg-oss-review** skill in Copilot
-3. Provide: (a) the compliance issue content and (b) the intranet request form data
+1. Clones the target repo and copies the [`.github/skills/wbg-oss-review/`](.github/skills/wbg-oss-review/) directory into it
+2. Opens the repo in VS Code and invokes the **wbg-oss-review** Copilot skill
+3. Provides: (a) the compliance issue content and (b) the intranet request form data
 4. The skill audits the repo, creates/updates compliance files, and generates PR content
-5. Create a branch, commit the changes, and open a PR using the generated content
-6. The requestor merges the PR — the compliance workflow re-runs automatically
+5. Creates a branch, commits the changes, and opens a PR using the generated content
+6. The team merges the PR — the compliance workflow re-runs automatically
 7. When all checks pass, the compliance issue closes
-8. Change the repo visibility to public
+
+### Step 3: Pre-publication check (optional)
+
+Run the [pre-publication compliance check](.github/compliance/make-public.yml) via manual dispatch. This performs a deep secret scan across the full git history. This step is optional but recommended.
+
+### Step 4: Go public
+
+The OSPO lead manually changes the repo visibility to public in GitHub Settings. Once public, CodeQL analysis activates automatically on subsequent workflow runs.
 
 ## WB IGO Riders
 
