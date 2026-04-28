@@ -1,6 +1,6 @@
 # WBG Open Source Code Catalog — Full Checklist Reference
 
-> **CodeQL availability**: The Code Quality (CodeQL) check only runs on **public** repositories (GitHub free tier). When reviewing a private repo before publication, expect the CodeQL job to show as "skipped" in the compliance issue. This is expected — CodeQL will activate automatically once the repo visibility is changed to public. Do not flag a skipped CodeQL result as a failure during pre-publication review.
+> **Native GitHub features**: The compliance workflow queries GitHub's native Secret Scanning, Dependabot, and Code Scanning (CodeQL) APIs rather than duplicating these scans. For **private** repos, Secret Scanning falls back to TruffleHog and CodeQL shows as "skipped" — both activate natively once the repo is made public. Do not flag a skipped CodeQL result as a failure during pre-publication review.
 
 ## Requirement 1: README.md
 

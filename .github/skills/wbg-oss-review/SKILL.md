@@ -20,7 +20,7 @@ The review process has two stages:
 1. **Stage 1 — Automated CI**: The team adds the compliance workflow to their repo. It runs on every push/PR/daily and creates a compliance issue with pass/fail results. This is the initial gate and the ongoing check after the repo is public.
 2. **Stage 2 — OSPO Review (this skill)**: The OSPO lead clones the repo, copies this skill in, and invokes it. The skill cross-references the automated results with the intranet request form, independently audits the repo, analyzes subjective fields (risk, maintenance, licensing), and generates fixes + PR content.
 
-After Stage 2 approval, the OSPO lead manually changes the repo visibility to public. CodeQL analysis activates automatically once the repo is public (free tier).
+After Stage 2 approval, the OSPO lead manually changes the repo visibility to public. GitHub native features (Secret Scanning, CodeQL default setup) activate automatically once the repo is public.
 
 The user handles all GitHub interactions (creating branches, PRs, and changing repo visibility).
 
@@ -38,11 +38,11 @@ The user handles all GitHub interactions (creating branches, PRs, and changing r
 Ask the user to paste the compliance issue content from the target repo. This issue is auto-created by the Stage 1 automated compliance workflow (labeled `compliance`, titled "Open Source Compliance Check: {repo}") and contains:
 
 - A checklist of pass/fail results for: License, README, Secrets, Data Files, Dependencies, Code Quality (Basic), Code Quality (CodeQL)
-- Informational results: Languages, Frameworks, AI Usage, Data Files detected
+- Informational results: Languages, Frameworks, AI Usage, Data Files detected, GitHub Native Integration status
 
 Extract which checks passed and which failed. If the user hasn't run the workflow yet, tell them to add the compliance workflow (`.github/workflows/compliance.yml`) from the open-source-kit, push to the default branch, and check the issue it creates.
 
-**Note on CodeQL**: The Code Quality (CodeQL) check only runs on public repositories (free tier). When reviewing a private repo pre-publication, expect this check to show as "skipped" — this is normal. CodeQL will activate automatically once the repo is made public.
+**Note on native GitHub features**: Secrets, Dependencies, and CodeQL are queried from GitHub's native APIs (Secret Scanning, Dependabot, Code Scanning) — not duplicated. For private repos, Secret Scanning uses TruffleHog as a fallback and CodeQL shows as "skipped". Both activate natively once the repo is made public.
 
 #### Step 2: Get the intranet request form data
 
@@ -168,7 +168,7 @@ This PR addresses the compliance check failures identified in #{issue_number}.
 
 ### Next Steps
 
-Once merged, the compliance workflow will re-run automatically. When all checks pass, the compliance issue will close. After that, the repo visibility can be changed to public.
+Once merged, the compliance workflow will re-run automatically. When all required checks pass, the compliance issue will close (code quality checks are optional and won't block closure). After that, the repo visibility can be changed to public.
 ```
 
 #### Step 7: Report to user
@@ -184,7 +184,7 @@ Summarize everything:
 3. **Form-field observations** — recap the key flags from Step 4
 4. **After the PR merges**:
    - Compliance workflow re-runs on push to default branch
-   - When all checks pass, the compliance issue closes automatically
+   - When all required checks pass, the compliance issue closes automatically (code quality is optional)
    - Then change repo visibility to public
 
 ---

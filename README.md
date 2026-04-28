@@ -6,15 +6,17 @@ Reusable GitHub Actions workflow and VS Code Copilot skill for World Bank open s
 
 - **License** — Whitelist: MIT, Apache-2.0. Requires WB IGO Rider for each.
 - **README** — Presence and content checks
-- **Secrets** — TruffleHog scan (working tree + optional history)
+- **Secrets** — Queries GitHub Secret Scanning API (public repos); TruffleHog fallback (private repos)
 - **Data Files** — Warns on large data files; suggests data catalog
-- **Dependencies** — Dependabot API for vulnerability alerts
+- **Dependencies** — Queries Dependabot Alerts API
 - **Code Quality (Basic)** — Local linters (eslint/ruff/flake8) or Super-Linter fallback
-- **Code Quality (CodeQL)** — GitHub CodeQL analysis (public repos only, free tier)
+- **Code Quality (CodeQL)** — Queries GitHub Code Scanning API (public repos); skipped for private repos
 - **Tech Stack** — GitHub Languages API + framework detection (informational)
 - **AI Usage** — Detects AI library usage (informational)
 
-On the default branch, a **compliance issue** is automatically created/updated with a checklist of results. The issue closes when all checks pass.
+For Secret Scanning, Dependabot, and CodeQL, the workflow **queries native GitHub APIs** rather than duplicating these scans. This avoids redundancy while consolidating all results into a single compliance issue.
+
+On the default branch, a **compliance issue** is automatically created/updated with a checklist of results. The issue closes when all required checks pass (code quality checks are optional).
 
 ## Org Prerequisites
 
@@ -30,7 +32,7 @@ Open source publication follows a two-stage process:
 1. **Stage 1 — Automated CI**: The team adds the compliance workflow to their repo. It runs on every push, PR, and daily schedule. A compliance issue is auto-created with pass/fail results. The team iterates until checks pass.
 2. **Stage 2 — OSPO Review**: The OSPO lead clones the repo, copies the Copilot skill in, and invokes it as a failsafe review. The skill cross-references automated results with the intranet request form, audits the repo independently, and generates fixes + PR content.
 
-After both stages pass, the OSPO lead **manually changes the repo visibility to public**. CodeQL analysis activates automatically on public repos (free tier).
+After both stages pass, the OSPO lead **manually changes the repo visibility to public**. GitHub native features (Secret Scanning, CodeQL default setup) activate automatically on public repos.
 
 The compliance workflow continues running after publication as an ongoing check.
 
@@ -52,7 +54,7 @@ When the team believes their repo is ready, the OSPO lead:
 4. The skill audits the repo, creates/updates compliance files, and generates PR content
 5. Creates a branch, commits the changes, and opens a PR using the generated content
 6. The team merges the PR — the compliance workflow re-runs automatically
-7. When all checks pass, the compliance issue closes
+7. When all required checks pass, the compliance issue closes (code quality is optional)
 
 ### Step 3: Pre-publication check (optional)
 
@@ -60,7 +62,7 @@ Run the [pre-publication compliance check](.github/compliance/make-public.yml) v
 
 ### Step 4: Go public
 
-The OSPO lead manually changes the repo visibility to public in GitHub Settings. Once public, CodeQL analysis activates automatically on subsequent workflow runs.
+The OSPO lead manually changes the repo visibility to public in GitHub Settings. Once public, GitHub native features (Secret Scanning, CodeQL default setup) activate automatically. The compliance workflow will then query their APIs instead of running TruffleHog.
 
 ## WB IGO Riders
 

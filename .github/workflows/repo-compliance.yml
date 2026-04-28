@@ -1,9 +1,11 @@
 name: Repo Compliance
 # Prerequisites:
 #   - Enable Dependabot org-wide: Settings > Code security > Dependabot alerts
-#   - The dependencies job fetches alerts via GitHub API (free tier)
-#   - Secret scanning uses TruffleHog (GitHub's is $19/committer)
-#   - Code quality uses local linters/Super-Linter (GitHub CodeQL is $30/committer)
+#   - The dependencies job queries Dependabot Alerts API (free tier)
+#   - Secret scanning: queries GitHub Secret Scanning API (public); TruffleHog fallback (private)
+#   - Code quality (linting): local linters or Super-Linter fallback
+#   - Code quality (CodeQL): queries GitHub Code Scanning API (public); skipped for private repos
+#   - Native GitHub features (Secret Scanning, Dependabot, CodeQL) are queried, not duplicated
 on:
   workflow_call:
     inputs:
@@ -139,19 +141,77 @@ jobs:
         id: detect
         run: python3 .compliance/.github/compliance/detect_stack.py
 
-  # --- Secrets: TruffleHog secret scanning (free, no license required) ---
+  # --- Secrets: query native Secret Scanning API (public); TruffleHog fallback (private) ---
   secrets:
     runs-on: ubuntu-latest
+    outputs:
+      source: ${{ steps.route.outputs.source }}
     steps:
+      - name: Determine scan strategy
+        id: route
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const meta = await github.rest.repos.get(context.repo);
+            const vis = meta.data.visibility;
+            core.setOutput('visibility', vis);
+            core.setOutput('source', vis === 'public' ? 'github-api' : 'trufflehog');
+            core.info(`Repo visibility: ${vis}`);
+
+      # --- Public repos: query GitHub Secret Scanning Alerts API ---
+      - name: Query Secret Scanning API
+        if: steps.route.outputs.visibility == 'public'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            try {
+              const alerts = await github.rest.secretScanning.listAlertsForRepo({
+                owner, repo, state: 'open', per_page: 100
+              });
+
+              core.summary.addHeading('Secret Scanning Alerts (GitHub native)', 2);
+
+              if (alerts.data.length === 0) {
+                core.summary.addRaw('✅ No open secret scanning alerts\n');
+                await core.summary.write();
+                core.info('No open secret scanning alerts');
+                return;
+              }
+
+              const items = alerts.data.slice(0, 10).map(a =>
+                `**${a.secret_type_display_name}** — ${a.state} (created ${a.created_at.substring(0, 10)})`
+              );
+              core.summary.addList(items);
+              if (alerts.data.length > 10) {
+                core.summary.addRaw(`...and ${alerts.data.length - 10} more\n`);
+              }
+              core.summary.addLink('View all alerts', `https://github.com/${owner}/${repo}/security/secret-scanning`);
+              await core.summary.write();
+
+              core.setFailed(`Found ${alerts.data.length} open secret scanning alerts. Review: https://github.com/${owner}/${repo}/security/secret-scanning`);
+            } catch (e) {
+              if (e.status === 404) {
+                core.warning('Secret scanning not available for this repo. Enable at: Settings > Code security > Secret scanning');
+              } else {
+                throw e;
+              }
+            }
+
+      # --- Private repos: TruffleHog scan (native secret scanning requires GHAS) ---
       - uses: actions/checkout@v4
+        if: steps.route.outputs.visibility != 'public'
         with: { fetch-depth: 0 }
       - name: TruffleHog scan
+        if: steps.route.outputs.visibility != 'public'
         uses: trufflesecurity/trufflehog@main
         with:
           extra_args: --only-verified
         continue-on-error: true
       - name: TruffleHog deep history scan
-        if: ${{ inputs.history_depth > 0 }}
+        if: steps.route.outputs.visibility != 'public' && inputs.history_depth > 0
         run: |
           curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
           trufflehog git file://. --no-update --json > trufflehog-results.json 2>/dev/null || true
@@ -292,25 +352,10 @@ jobs:
           VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_PYTHON_FLAKE8: true
 
-  # --- Code quality: GitHub CodeQL (free for public repos) ---
-  code-quality-codeql:
-    runs-on: ubuntu-latest
-    if: github.event.repository.visibility == 'public'
-    permissions:
-      security-events: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: autodetect
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-
   # --- Summary: Create/update issue for failed checks (default branch only) ---
   summary:
     runs-on: ubuntu-latest
-    needs: [license, readme, tech-stack, secrets, data-files, ai-usage, dependencies, code-quality-basic, code-quality-codeql]
+    needs: [license, readme, tech-stack, secrets, data-files, ai-usage, dependencies, code-quality-basic]
     if: always() && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     steps:
       - uses: actions/github-script@v7
@@ -322,7 +367,42 @@ jobs:
             const sha = context.sha.substring(0, 7);
             const issueTitle = `Open Source Compliance Check: ${repo}`;
 
-            // Job results from needs context (compliance checks)
+            // --- Query native GitHub security APIs (public repos) ---
+            const repoMeta = await github.rest.repos.get(context.repo);
+            const isPublic = repoMeta.data.visibility === 'public';
+
+            // Query Code Scanning (CodeQL) alerts — public repos only
+            let codeqlStatus = 'skipped';
+            let codeqlSummary = 'Private repo — CodeQL activates once public';
+            if (isPublic) {
+              try {
+                const csAlerts = await github.rest.codeScanning.listAlertsForRepo({
+                  owner, repo, state: 'open', per_page: 100
+                });
+                const critical = csAlerts.data.filter(a => a.rule?.security_severity_level === 'critical');
+                const high = csAlerts.data.filter(a => a.rule?.security_severity_level === 'high');
+                if (critical.length > 0 || high.length > 0) {
+                  codeqlStatus = 'failure';
+                  codeqlSummary = `${critical.length} critical, ${high.length} high severity alerts`;
+                } else if (csAlerts.data.length > 0) {
+                  codeqlStatus = 'success';
+                  codeqlSummary = `${csAlerts.data.length} open alerts (no critical/high)`;
+                } else {
+                  codeqlStatus = 'success';
+                  codeqlSummary = 'No open alerts';
+                }
+              } catch (e) {
+                if (e.status === 404 || e.status === 403) {
+                  codeqlStatus = 'skipped';
+                  codeqlSummary = 'Code scanning not configured — enable default setup in Settings > Code security';
+                } else {
+                  codeqlStatus = 'skipped';
+                  codeqlSummary = `API error: ${e.message}`;
+                }
+              }
+            }
+
+            // Job results from needs context (CI checks run by this workflow)
             const jobs = {
               'License': '${{ needs.license.result }}',
               'README': '${{ needs.readme.result }}',
@@ -330,8 +410,19 @@ jobs:
               'Data Files': '${{ needs.data-files.result }}',
               'Dependencies': '${{ needs.dependencies.result }}',
               'Code Quality (Basic)': '${{ needs.code-quality-basic.result }}',
-              'Code Quality (CodeQL)': '${{ needs.code-quality-codeql.result }}'
+              'Code Quality (CodeQL)': codeqlStatus
             };
+
+            // Optional checks: failures here are shown but don't block issue closure
+            const optionalChecks = new Set([
+              'Code Quality (Basic)',
+              'Code Quality (CodeQL)'
+            ]);
+
+            // Checks that come from API queries rather than CI jobs
+            const apiChecks = new Set([
+              'Code Quality (CodeQL)'
+            ]);
 
             // Get job URLs from workflow run
             const { data: workflowJobs } = await github.rest.actions.listJobsForWorkflowRun({
@@ -354,8 +445,14 @@ jobs:
               'Secrets': 'secrets',
               'Data Files': 'data-files',
               'Dependencies': 'dependencies',
-              'Code Quality (Basic)': 'code-quality-basic',
-              'Code Quality (CodeQL)': 'code-quality-codeql'
+              'Code Quality (Basic)': 'code-quality-basic'
+            };
+
+            // Links for API-queried checks (not CI jobs)
+            const apiCheckLinks = {
+              'Code Quality (CodeQL)': isPublic
+                ? `https://github.com/${owner}/${repo}/security/code-scanning`
+                : `https://github.com/${owner}/${repo}/settings/security_analysis`
             };
 
             // Build checklist
@@ -374,14 +471,26 @@ jobs:
 
             for (const [name, result] of Object.entries(jobs)) {
               const icon = statusIcon(result);
-              const jobName = jobNameMap[name];
-              const jobUrl = findJobUrl(jobName);
+              const isOptional = optionalChecks.has(name);
+              const isApi = apiChecks.has(name);
+              const label = isOptional ? ` *(optional)*` : '';
+
+              // For API-queried checks, link to the GitHub security tab; for CI jobs, link to the job run
+              let url;
+              if (isApi) {
+                url = apiCheckLinks[name];
+              } else {
+                const jobName = jobNameMap[name];
+                url = findJobUrl(jobName);
+              }
 
               if (result === 'failure' || result === 'skipped') {
-                hasFailures = true;
-                checklistItems.push(`- [ ] ${icon} **[${name}](${jobUrl})** - ${result}`);
+                if (!isOptional) {
+                  hasFailures = true;
+                }
+                checklistItems.push(`- [ ] ${icon} **[${name}](${url})** - ${result}${label}`);
               } else {
-                checklistItems.push(`- [x] ${icon} **[${name}](${jobUrl})** - ${result}`);
+                checklistItems.push(`- [x] ${icon} **[${name}](${url})** - ${result}${label}`);
               }
             }
 
@@ -426,6 +535,14 @@ jobs:
               infoContent.push(`- **Data Files:** None detected`);
             }
 
+            // GitHub native integration status
+            const secretsSource = '${{ needs.secrets.outputs.source }}' || 'unknown';
+            infoContent.push('');
+            infoContent.push(`**GitHub Native Integration**`);
+            infoContent.push(`- **Secret Scanning:** ${secretsSource === 'github-api' ? 'Using GitHub Secret Scanning API' : 'Using TruffleHog (private repo)'}`);
+            infoContent.push(`- **Dependabot:** Using Dependabot Alerts API`);
+            infoContent.push(`- **CodeQL:** ${codeqlSummary}`);
+
             const body = `## Compliance Check Results
 
             **Commit:** \`${sha}\`
@@ -441,7 +558,7 @@ jobs:
             ${infoContent.join('\n')}
 
             ---
-            *This issue is auto-managed by the [open source compliance workflow](https://github.com/${owner}/${repo}/actions/workflows/compliance.yml). Click on each item to review details. Push to the default branch to re-run checks and update the checklist. Issue closes when all checks pass.*
+            *This issue is auto-managed by the [open source compliance workflow](https://github.com/${owner}/${repo}/actions/workflows/compliance.yml). Click on each item to review details. Push to the default branch to re-run checks and update the checklist. Issue closes when all required checks pass (code quality checks are optional).*
             `.replace(/^            /gm, '');
 
             // Search for existing issue
