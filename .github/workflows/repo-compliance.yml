@@ -31,6 +31,8 @@ jobs:
   # --- License via GitHub API (whitelist MIT/Apache-2.0) + WB IGO Riders ---
   license:
     runs-on: ubuntu-latest
+    outputs:
+      outcome: ${{ steps.set-outcome.outputs.result }}
     steps:
       - uses: actions/checkout@v4
       - name: License from GitHub API
@@ -41,6 +43,8 @@ jobs:
             const meta = await github.rest.repos.get(context.repo);
             core.setOutput("spdx", meta.data.license?.spdx_id || "");
       - name: Enforce whitelist
+        id: whitelist
+        continue-on-error: true
         run: |
           SPDX="${{ steps.gh-license.outputs.spdx }}"
           echo "Detected SPDX: ${SPDX:-<none>}"
@@ -50,7 +54,9 @@ jobs:
             *) echo "::error::Non-whitelisted license: $SPDX"; exit 1 ;;
           esac
       - name: Check WB IGO Rider (required for MIT)
+        id: rider-mit
         if: steps.gh-license.outputs.spdx == 'MIT'
+        continue-on-error: true
         run: |
           RIDER_FILE="WB-IGO-RIDER.md"
           CANONICAL_URL="https://raw.githubusercontent.com/worldbank/.github/main/WB-IGO-RIDER.md"
@@ -73,7 +79,9 @@ jobs:
 
           echo "WB IGO Rider present and matches canonical version"
       - name: Check WB IGO Apache Rider (required for Apache-2.0)
+        id: rider-apache
         if: steps.gh-license.outputs.spdx == 'Apache-2.0'
+        continue-on-error: true
         run: |
           RIDER_FILE="WB-IGO-RIDER-APACHE.md"
           CANONICAL_URL="https://raw.githubusercontent.com/worldbank/.github/main/WB-IGO-RIDER-APACHE.md"
@@ -95,10 +103,23 @@ jobs:
           fi
 
           echo "WB IGO Rider present and matches canonical version"
+      - name: Set outcome
+        id: set-outcome
+        if: always()
+        run: |
+          if [ "${{ steps.whitelist.outcome }}" = "failure" ] || \
+             [ "${{ steps.rider-mit.outcome }}" = "failure" ] || \
+             [ "${{ steps.rider-apache.outcome }}" = "failure" ]; then
+            echo "result=failure" >> $GITHUB_OUTPUT
+          else
+            echo "result=success" >> $GITHUB_OUTPUT
+          fi
 
   # --- README checks ---
   readme:
     runs-on: ubuntu-latest
+    outputs:
+      outcome: ${{ steps.set-outcome.outputs.result }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -108,11 +129,25 @@ jobs:
           sparse-checkout: .github/compliance
       - run: npm i -g markdownlint-cli
       - name: Lint README
+        id: lint
+        continue-on-error: true
         run: |
           test -f README.md || { echo "::error::Missing README.md"; exit 1; }
           markdownlint README.md || true
       - name: Content checks
+        id: content
+        continue-on-error: true
         run: python3 .compliance/.github/compliance/check_readme.py
+      - name: Set outcome
+        id: set-outcome
+        if: always()
+        run: |
+          if [ "${{ steps.lint.outcome }}" = "failure" ] || \
+             [ "${{ steps.content.outcome }}" = "failure" ]; then
+            echo "result=failure" >> $GITHUB_OUTPUT
+          else
+            echo "result=success" >> $GITHUB_OUTPUT
+          fi
 
   # --- Languages via GitHub API + framework detection script ---
   tech-stack:
@@ -146,6 +181,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       source: ${{ steps.route.outputs.source }}
+      outcome: ${{ steps.set-outcome.outputs.result }}
     steps:
       - name: Determine scan strategy
         id: route
@@ -160,7 +196,9 @@ jobs:
 
       # --- Public repos: query GitHub Secret Scanning Alerts API ---
       - name: Query Secret Scanning API
+        id: scan-api
         if: steps.route.outputs.visibility == 'public'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -205,6 +243,7 @@ jobs:
         if: steps.route.outputs.visibility != 'public'
         with: { fetch-depth: 0 }
       - name: TruffleHog scan
+        id: trufflehog
         if: steps.route.outputs.visibility != 'public'
         uses: trufflesecurity/trufflehog@main
         with:
@@ -221,6 +260,16 @@ jobs:
           else
             echo "No secrets found in history scan"
           fi
+      - name: Set outcome
+        id: set-outcome
+        if: always()
+        run: |
+          if [ "${{ steps.scan-api.outcome }}" = "failure" ] || \
+             [ "${{ steps.trufflehog.outcome }}" = "failure" ]; then
+            echo "result=failure" >> $GITHUB_OUTPUT
+          else
+            echo "result=success" >> $GITHUB_OUTPUT
+          fi
 
   # --- Data file scan (warn/fail per policy) ---
   data-files:
@@ -228,6 +277,7 @@ jobs:
     outputs:
       detected: ${{ steps.check.outputs.detected }}
       count: ${{ steps.check.outputs.count }}
+      outcome: ${{ steps.set-outcome.outputs.result }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -237,7 +287,17 @@ jobs:
           sparse-checkout: .github/compliance
       - name: Check data files
         id: check
+        continue-on-error: true
         run: python3 .compliance/.github/compliance/check_data_files.py
+      - name: Set outcome
+        id: set-outcome
+        if: always()
+        run: |
+          if [ "${{ steps.check.outcome }}" = "failure" ]; then
+            echo "result=failure" >> $GITHUB_OUTPUT
+          else
+            echo "result=success" >> $GITHUB_OUTPUT
+          fi
 
   # --- AI usage hints (informational) ---
   ai-usage:
@@ -245,6 +305,7 @@ jobs:
     outputs:
       detected: ${{ steps.detect.outputs.detected }}
       files: ${{ steps.detect.outputs.files }}
+      outcome: ${{ steps.set-outcome.outputs.result }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -254,14 +315,28 @@ jobs:
           sparse-checkout: .github/compliance
       - name: Detect AI usage
         id: detect
+        continue-on-error: true
         run: python3 .compliance/.github/compliance/detect_ai_use.py
+      - name: Set outcome
+        id: set-outcome
+        if: always()
+        run: |
+          if [ "${{ steps.detect.outcome }}" = "failure" ]; then
+            echo "result=failure" >> $GITHUB_OUTPUT
+          else
+            echo "result=success" >> $GITHUB_OUTPUT
+          fi
 
   # --- Dependency security via Dependabot API (free) ---
   # Requires Dependabot to be enabled org-wide
   dependencies:
     runs-on: ubuntu-latest
+    outputs:
+      outcome: ${{ steps.set-outcome.outputs.result }}
     steps:
-      - uses: actions/github-script@v7
+      - id: dep-check
+        uses: actions/github-script@v7
+        continue-on-error: true
         env:
           DEPENDABOT_TOKEN: ${{ secrets.DEPENDABOT_TOKEN }}
         with:
@@ -317,15 +392,27 @@ jobs:
                 throw e;
               }
             }
+      - name: Set outcome
+        id: set-outcome
+        if: always()
+        run: |
+          if [ "${{ steps.dep-check.outcome }}" = "failure" ]; then
+            echo "result=failure" >> $GITHUB_OUTPUT
+          else
+            echo "result=success" >> $GITHUB_OUTPUT
+          fi
 
   # --- Code quality/security: prefer local linters; fallback to Super-Linter ---
   code-quality-basic:
     runs-on: ubuntu-latest
+    outputs:
+      outcome: ${{ steps.set-outcome.outputs.result }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Detect & run local linters
         id: local
+        continue-on-error: true
         run: |
           set -e
           found=0
@@ -340,7 +427,9 @@ jobs:
           if [ $found -eq 0 ]; then echo "fallback=true" >> $GITHUB_OUTPUT; fi
 
       - name: Super-Linter fallback
+        id: superlinter
         if: steps.local.outputs.fallback == 'true'
+        continue-on-error: true
         uses: github/super-linter/slim@v6
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
@@ -351,6 +440,16 @@ jobs:
           VALIDATE_MARKDOWN: true
           VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_PYTHON_FLAKE8: true
+      - name: Set outcome
+        id: set-outcome
+        if: always()
+        run: |
+          if [ "${{ steps.local.outcome }}" = "failure" ] || \
+             [ "${{ steps.superlinter.outcome }}" = "failure" ]; then
+            echo "result=failure" >> $GITHUB_OUTPUT
+          else
+            echo "result=success" >> $GITHUB_OUTPUT
+          fi
 
   # --- Summary: Create/update issue for failed checks (default branch only) ---
   summary:
@@ -402,14 +501,15 @@ jobs:
               }
             }
 
-            // Job results from needs context (CI checks run by this workflow)
+            // Job results from outcome outputs (actual results, not masked by continue-on-error)
+            // Falls back to needs.X.result if output is missing (e.g., job was cancelled)
             const jobs = {
-              'License': '${{ needs.license.result }}',
-              'README': '${{ needs.readme.result }}',
-              'Secrets': '${{ needs.secrets.result }}',
-              'Data Files': '${{ needs.data-files.result }}',
-              'Dependencies': '${{ needs.dependencies.result }}',
-              'Code Quality (Basic)': '${{ needs.code-quality-basic.result }}',
+              'License': '${{ needs.license.outputs.outcome }}' || '${{ needs.license.result }}',
+              'README': '${{ needs.readme.outputs.outcome }}' || '${{ needs.readme.result }}',
+              'Secrets': '${{ needs.secrets.outputs.outcome }}' || '${{ needs.secrets.result }}',
+              'Data Files': '${{ needs.data-files.outputs.outcome }}' || '${{ needs.data-files.result }}',
+              'Dependencies': '${{ needs.dependencies.outputs.outcome }}' || '${{ needs.dependencies.result }}',
+              'Code Quality (Basic)': '${{ needs.code-quality-basic.outputs.outcome }}' || '${{ needs.code-quality-basic.result }}',
               'Code Quality (CodeQL)': codeqlStatus
             };
 
